@@ -48,22 +48,31 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
                 <TextBlock FontSize="32" FontWeight="SemiBold" Text="Browse Drops" />
                 <TextBlock x:Name="StatusText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="Refresh to load active Kick drops." />
             </StackPanel>
             <ProgressRing x:Name="LoadProgress" Grid.Column="1" Width="28" Height="28" IsActive="False" Visibility="Collapsed" />
-            <Button x:Name="AddSeriesButton" Grid.Column="2" MinWidth="120" Click="AddSeries_Click" Content="Add Series" IsEnabled="False" />
-            <Button Grid.Column="3" MinWidth="120" Click="Refresh_Click" Content="Load Drops" Style="{StaticResource AccentButtonStyle}" />
+            <Button x:Name="AddSelectedButton" Grid.Column="2" MinWidth="120" Click="AddSelected_Click" Content="Add Selected" IsEnabled="False" />
+            <Button x:Name="AddSeriesButton" Grid.Column="3" MinWidth="120" Click="AddSeries_Click" Content="Add Series" IsEnabled="False" />
+            <Button Grid.Column="4" MinWidth="120" Click="Refresh_Click" Content="Load Drops" Style="{StaticResource AccentButtonStyle}" />
         </Grid>
 
-        <ComboBox
-            x:Name="AccountPicker"
-            Grid.Row="1"
-            DisplayMemberPath="Name"
-            Header="Account"
-            MinWidth="240" />
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="16">
+            <ComboBox
+                x:Name="AccountPicker"
+                DisplayMemberPath="Name"
+                Header="Account"
+                MinWidth="240" />
+            <ComboBox
+                x:Name="SeriesPicker"
+                Header="Series / game"
+                MinWidth="240"
+                SelectionChanged="SeriesPicker_SelectionChanged"
+                PlaceholderText="Select a series" />
+        </StackPanel>
 
         <ProgressBar
             x:Name="LoadBar"
@@ -98,7 +107,7 @@
                 Grid.Row="1"
                 ItemTemplate="{StaticResource CampaignTemplate}"
                 SelectionChanged="CampaignList_SelectionChanged"
-                SelectionMode="Single" />
+                SelectionMode="Multiple" />
         </Grid>
     </Grid>
 </Page>

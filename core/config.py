@@ -141,6 +141,8 @@ class Config:
         account_id=None,
         is_manual_link=False,
         drop_name=None,
+        campaign_starts_at=None,
+        campaign_ends_at=None,
     ):
         """Add item with optional campaign grouping"""
         item = {
@@ -159,6 +161,8 @@ class Config:
             "account_id": account_id or self.default_account_id,
             "is_manual_link": is_manual_link,
             "drop_name": drop_name,
+            "campaign_starts_at": campaign_starts_at,
+            "campaign_ends_at": campaign_ends_at,
             "watched_seconds": 0,
             "tried_channels": [],
         }

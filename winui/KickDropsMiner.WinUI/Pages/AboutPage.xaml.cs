@@ -11,6 +11,7 @@ namespace KickDropsMiner_WinUI.Pages;
 public sealed partial class AboutPage : Page
 {
     private readonly ObservableCollection<CampaignItem> _campaigns = [];
+    private readonly ObservableCollection<string> _series = [];
     private readonly DispatcherQueue _dispatcherQueue;
 
     public AboutPage()
@@ -18,6 +19,7 @@ public sealed partial class AboutPage : Page
         InitializeComponent();
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         CampaignList.ItemsSource = _campaigns;
+        SeriesPicker.ItemsSource = _series;
         AccountPicker.ItemsSource = AppServices.State.Accounts;
         if (AppServices.State.Accounts.Count > 0)
         {
@@ -137,11 +139,40 @@ public sealed partial class AboutPage : Page
         {
             _campaigns.Add(item);
         }
+        RefreshSeries();
     }
 
     private void CampaignList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        AddSeriesButton.IsEnabled = CampaignList.SelectedItem is CampaignItem;
+        AddSelectedButton.IsEnabled = CampaignList.SelectedItems.Count > 0;
+        AddSeriesButton.IsEnabled = SeriesPicker.SelectedItem is string || CampaignList.SelectedItems.Count > 0;
+    }
+
+    private void SeriesPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        AddSeriesButton.IsEnabled = SeriesPicker.SelectedItem is string || CampaignList.SelectedItems.Count > 0;
+    }
+
+    private void RefreshSeries()
+    {
+        var selected = SeriesPicker.SelectedItem as string;
+        var games = _campaigns
+            .Select(c => c.Game)
+            .Where(game => !string.IsNullOrWhiteSpace(game))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(game => game)
+            .ToArray();
+
+        _series.Clear();
+        foreach (var game in games)
+        {
+            _series.Add(game);
+        }
+
+        if (!string.IsNullOrWhiteSpace(selected) && _series.Contains(selected))
+        {
+            SeriesPicker.SelectedItem = selected;
+        }
     }
 
     private static CampaignItem ToCampaignItem(JsonElement campaign)
@@ -190,51 +221,56 @@ public sealed partial class AboutPage : Page
             return;
         }
 
-        var account = AccountPicker.SelectedItem as AccountItem;
-        using var raw = JsonDocument.Parse(campaign.RawJson);
-        var result = await AppServices.Bridge.SendCommandAsync("add_campaign", new
-        {
-            campaign = raw.RootElement,
-            account_id = account?.Id
-        });
+        await AddCampaignsAsync(new[] { campaign }, campaign.Name);
+    }
 
-        if (result.HasValue)
+    private async void AddSelected_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        var selected = CampaignList.SelectedItems.OfType<CampaignItem>().ToArray();
+        if (selected.Length == 0)
         {
-            if (result.Value.TryGetProperty("ok", out var ok) && ok.ValueKind == JsonValueKind.False)
-            {
-                StatusText.Text = ReadString(result.Value, "error");
-                return;
-            }
-
-            AppServices.State.ApplyBackendState(result.Value);
-            StatusText.Text = $"Added {campaign.Name}.";
+            StatusText.Text = "Select one or more drops first.";
+            return;
         }
+
+        await AddCampaignsAsync(selected, $"{selected.Length} selected drop(s)");
     }
 
     private async void AddSeries_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        if (CampaignList.SelectedItem is not CampaignItem selected)
+        var game = SeriesPicker.SelectedItem as string;
+        if (string.IsNullOrWhiteSpace(game))
         {
-            StatusText.Text = "Select a drop first.";
+            game = CampaignList.SelectedItems.OfType<CampaignItem>().FirstOrDefault()?.Game;
+        }
+
+        if (string.IsNullOrWhiteSpace(game))
+        {
+            StatusText.Text = "Select a series/game or select a drop first.";
+            return;
+        }
+
+        var series = _campaigns
+            .Where(c => string.Equals(c.Game, game, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        await AddCampaignsAsync(series, game);
+    }
+
+    private async Task AddCampaignsAsync(IReadOnlyCollection<CampaignItem> campaigns, string label)
+    {
+        if (campaigns.Count == 0)
+        {
+            StatusText.Text = "No drops found to add.";
             return;
         }
 
         var account = AccountPicker.SelectedItem as AccountItem;
-        var series = _campaigns
-            .Where(c => string.Equals(c.Game, selected.Game, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-
-        if (series.Length == 0)
-        {
-            StatusText.Text = "No drops found for this series.";
-            return;
-        }
-
         var documents = new List<JsonDocument>();
         try
         {
             var campaignPayload = new List<JsonElement>();
-            foreach (var campaign in series)
+            foreach (var campaign in campaigns)
             {
                 var document = JsonDocument.Parse(campaign.RawJson);
                 documents.Add(document);
@@ -249,7 +285,7 @@ public sealed partial class AboutPage : Page
 
             if (!result.HasValue)
             {
-                StatusText.Text = "Could not add series.";
+                StatusText.Text = "Could not add drops.";
                 return;
             }
 
@@ -263,8 +299,8 @@ public sealed partial class AboutPage : Page
             var added = ReadInt(result.Value, "added");
             var skipped = ReadInt(result.Value, "skipped");
             StatusText.Text = skipped > 0
-                ? $"Added {added} drop(s) from {selected.Game}; skipped {skipped}."
-                : $"Added {added} drop(s) from {selected.Game}.";
+                ? $"Added {added} drop(s) from {label}; skipped {skipped}."
+                : $"Added {added} drop(s) from {label}.";
         }
         finally
         {
