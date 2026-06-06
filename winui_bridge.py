@@ -2,8 +2,17 @@
 from __future__ import annotations
 
 import json
+import os
+import site
 import sys
 import threading
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+PYTHON_LIBS_DIR = os.path.join(APP_DIR, "python_libs")
+if os.path.isdir(PYTHON_LIBS_DIR):
+    site.addsitedir(PYTHON_LIBS_DIR)
+    if PYTHON_LIBS_DIR not in sys.path:
+        sys.path.insert(0, PYTHON_LIBS_DIR)
 
 from core.winui_service import WinUIBackend
 
