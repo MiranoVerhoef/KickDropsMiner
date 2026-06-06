@@ -153,6 +153,21 @@ def _chrome_executable_candidates():
             yield path
 
 
+def _app_root():
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _bundled_chromedriver():
+    candidates = (
+        os.path.join(_app_root(), "chromedriver-win64", "chromedriver.exe"),
+        os.path.join(_app_root(), "chromedriver.exe"),
+    )
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return None
+
+
 def _parse_major_version(version_text):
     match = re.search(r"(\d+)\.", version_text or "")
     if not match:
@@ -265,16 +280,34 @@ def make_chrome_driver(
             pass
 
     chrome_major, chrome_executable = _detect_chrome()
-    driver_kwargs = {
-        "options": opts,
-        "version_main": chrome_major,
-    }
+    local_driver_path = driver_path if driver_path and os.path.isfile(driver_path) else _bundled_chromedriver()
+    driver_kwargs = {"options": opts}
+    if chrome_major:
+        driver_kwargs["version_main"] = chrome_major
     if chrome_executable:
         driver_kwargs["browser_executable_path"] = chrome_executable
-    if driver_path and os.path.isfile(driver_path):
-        driver_kwargs["driver_executable_path"] = driver_path
+    if local_driver_path:
+        driver_kwargs["driver_executable_path"] = local_driver_path
 
-    driver = uc.Chrome(**driver_kwargs)
+    attempts = [driver_kwargs]
 
-    return driver
+    fallback_with_executable = {"options": opts}
+    if chrome_executable:
+        fallback_with_executable["browser_executable_path"] = chrome_executable
+    if local_driver_path:
+        fallback_with_executable["driver_executable_path"] = local_driver_path
+    if fallback_with_executable != driver_kwargs:
+        attempts.append(fallback_with_executable)
+
+    attempts.append({"options": opts})
+
+    errors = []
+    for kwargs in attempts:
+        try:
+            return uc.Chrome(**kwargs)
+        except Exception as exc:
+            errors.append(str(exc))
+
+    details = " | ".join(error for error in errors if error)
+    raise RuntimeError(f"Could not start Chrome. Tried detected Chrome, bundled chromedriver, and default undetected-chromedriver startup. {details}")
 
