@@ -7,21 +7,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Page.Resources>
-        <DataTemplate x:Key="LogTemplate">
-            <Grid Padding="14,10" ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="180" />
-                    <ColumnDefinition Width="160" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Drop}" />
-                <TextBlock Grid.Column="1" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{Binding Creator}" />
-                <TextBlock Grid.Column="2" Text="{Binding Display}" />
-            </Grid>
-        </DataTemplate>
-    </Page.Resources>
-
     <Grid Padding="28,24" RowSpacing="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -60,7 +45,7 @@
             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
             BorderThickness="1"
             CornerRadius="8">
-            <ListView x:Name="LogList" ItemTemplate="{StaticResource LogTemplate}" />
+            <ListView x:Name="LogList" />
         </Border>
     </Grid>
 </Page>

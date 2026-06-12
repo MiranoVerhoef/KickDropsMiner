@@ -357,7 +357,7 @@ def fetch_drop_campaigns():
         return {"campaigns": [], "driver": None}
 
 
-def fetch_drops_progress(driver=None, account_id=None):
+def fetch_drops_progress(driver=None, account_id=None, headless=False):
     """Fetches current drop progress from the Kick API.
     Uses undetected_chromedriver and requires authentication via session_token cookie.
     If driver is provided, reuses it instead of creating a new one.
@@ -374,14 +374,15 @@ def fetch_drops_progress(driver=None, account_id=None):
             
             # Use the same approach as fetch_drop_campaigns
             driver = make_chrome_driver(
-                headless=False, visible_width=400, visible_height=300
+                headless=headless, visible_width=400, visible_height=300
             )
             
             # Position window off-screen
-            try:
-                driver.set_window_position(-2000, -2000)
-            except:
-                pass
+            if not headless:
+                try:
+                    driver.set_window_position(-2000, -2000)
+                except:
+                    pass
             
             # Visit kick.com and load cookies
             print("Establishing session on kick.com...")

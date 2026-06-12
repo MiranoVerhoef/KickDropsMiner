@@ -898,7 +898,7 @@ class WinUIBackend:
         for account_id in account_ids:
             driver = None
             try:
-                result = fetch_drops_progress(account_id=account_id)
+                result = fetch_drops_progress(account_id=account_id, headless=True)
                 driver = result.get("driver")
                 progress_data = [p for p in result.get("progress", []) if isinstance(p, dict)]
                 progress_by_id = {p.get("id"): p for p in progress_data if p.get("id")}

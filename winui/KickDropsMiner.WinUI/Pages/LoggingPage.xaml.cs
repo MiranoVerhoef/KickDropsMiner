@@ -18,15 +18,19 @@ public sealed partial class LoggingPage : Page
     {
         var selectedDrop = DropFilter.SelectedItem as string ?? "All drops";
         var selectedCreator = CreatorFilter.SelectedItem as string ?? "All creators";
-        DropFilter.ItemsSource = AppServices.State.DropFilterValues();
-        CreatorFilter.ItemsSource = AppServices.State.CreatorFilterValues();
-        DropFilter.SelectedItem = DropFilter.Items.Contains(selectedDrop) ? selectedDrop : "All drops";
-        CreatorFilter.SelectedItem = CreatorFilter.Items.Contains(selectedCreator) ? selectedCreator : "All creators";
+        var drops = AppServices.State.DropFilterValues();
+        var creators = AppServices.State.CreatorFilterValues();
+        DropFilter.ItemsSource = drops;
+        CreatorFilter.ItemsSource = creators;
+        DropFilter.SelectedItem = drops.Contains(selectedDrop) ? selectedDrop : "All drops";
+        CreatorFilter.SelectedItem = creators.Contains(selectedCreator) ? selectedCreator : "All creators";
     }
 
     private void RefreshLogs()
     {
-        LogList.ItemsSource = FilteredLogs().ToArray();
+        LogList.ItemsSource = FilteredLogs()
+            .Select(log => $"[{log.Time:HH:mm:ss}] {log.Drop} | {log.Creator} | {log.Message}")
+            .ToArray();
     }
 
     private void Filter_SelectionChanged(object sender, SelectionChangedEventArgs e)
