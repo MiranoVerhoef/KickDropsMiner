@@ -184,6 +184,27 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private async void DeleteFinishedDrops_Click(object sender, RoutedEventArgs e)
+    {
+        ManualCheckStatus.Text = "Deleting finished drops...";
+        var result = await AppServices.Bridge.SendCommandAsync("delete_finished");
+        if (result.HasValue)
+        {
+            var removed = 0;
+            if (result.Value.TryGetProperty("removed", out var removedElement)
+                && removedElement.ValueKind == System.Text.Json.JsonValueKind.Number)
+            {
+                removed = removedElement.GetInt32();
+            }
+            State.ApplyBackendState(result.Value);
+            ManualCheckStatus.Text = $"Deleted {removed} finished drop(s).";
+        }
+        else
+        {
+            ManualCheckStatus.Text = "Delete failed. See Logging.";
+        }
+    }
+
     private async Task SaveSettingsAsync(string? chromedriverPath = null, string? extensionPath = null)
     {
         var result = await AppServices.Bridge.SendCommandAsync("update_settings", new

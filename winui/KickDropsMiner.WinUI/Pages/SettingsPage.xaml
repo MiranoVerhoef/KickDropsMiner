@@ -48,6 +48,7 @@
                     <TextBlock FontSize="18" FontWeight="SemiBold" Text="Queue" />
                     <ToggleSwitch x:Name="AutoStartSwitch" Header="Auto-start queue" Toggled="Setting_Toggled" />
                     <Button MinWidth="170" Click="ManualCheckDrops_Click" Content="Manual check drops" />
+                    <Button MinWidth="170" Click="DeleteFinishedDrops_Click" Content="Delete finished drops" />
                     <TextBlock x:Name="ManualCheckStatus" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="WrapWholeWords" />
                 </StackPanel>
             </Border>

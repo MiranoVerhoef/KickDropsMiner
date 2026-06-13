@@ -5,6 +5,7 @@ import time
 import random
 import re
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 
 from utils.helpers import domain_from_url, debug_print, _kick_username_from_url
 from .browser import make_chrome_driver, CookieManager, accept_kick_cookies
@@ -63,6 +64,8 @@ class StreamWorker(threading.Thread):
         # Category check interval (check every 30 seconds)
         self._last_category_check = 0.0
         self._category_check_interval = 30  # seconds
+        self._last_quality_apply = 0.0
+        self._quality_apply_until = 0.0
 
     def run(self):
         """Main worker loop"""
@@ -127,6 +130,9 @@ class StreamWorker(threading.Thread):
             except Exception:
                 pass
 
+            self._quality_apply_until = time.time() + 75
+            self.apply_stream_quality(force=True)
+
             try:
                 self.ensure_player_state()
             except Exception:
@@ -139,6 +145,10 @@ class StreamWorker(threading.Thread):
                 fresh_check = self._last_live_check != prev_live_check
                 try:
                     self.ensure_player_state()
+                except Exception:
+                    pass
+                try:
+                    self.apply_stream_quality()
                 except Exception:
                     pass
 
@@ -218,6 +228,92 @@ class StreamWorker(threading.Thread):
             return bool(self.driver and self.driver.window_handles)
         except Exception:
             return False
+
+    def apply_stream_quality(self, force=False):
+        """Persist and apply the requested Kick player quality when the player exposes controls."""
+        if not self.driver or self.stream_quality not in {"160", "320", "480", "720", "1080"}:
+            return
+
+        now = time.time()
+        if not force and (now > self._quality_apply_until or now - self._last_quality_apply < 10):
+            return
+        self._last_quality_apply = now
+
+        quality = str(self.stream_quality)
+        label = f"{quality}p"
+        try:
+            self.driver.execute_script(
+                """
+                const value = arguments[0];
+                const label = `${value}p`;
+                const keys = [
+                  'stream_quality', 'video_quality', 'player_quality', 'quality',
+                  'preferred_quality', 'playback_quality', 'resolution',
+                  'kick_stream_quality', 'kick_video_quality', 'kick_player_quality',
+                  'kick:stream_quality', 'kick:video_quality', 'kick:player:quality',
+                  'kick:player:qualityLabel'
+                ];
+                for (const store of [window.localStorage, window.sessionStorage]) {
+                  for (const key of keys) {
+                    try {
+                      store.setItem(key, value);
+                      store.setItem(`${key}_label`, label);
+                    } catch (e) {}
+                  }
+                }
+                try { window.dispatchEvent(new StorageEvent('storage', { key: 'stream_quality', newValue: value })); } catch (e) {}
+                """,
+                quality,
+            )
+        except Exception:
+            pass
+
+        # Visible-player fallback: open the settings/quality menu and click "320p", "480p", etc.
+        try:
+            ActionChains(self.driver).move_by_offset(1, 1).perform()
+        except Exception:
+            pass
+
+        menu_opened = False
+        settings_xpaths = (
+            "//button[contains(translate(@aria-label, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'quality')]",
+            "//button[contains(translate(@aria-label, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'settings')]",
+            "//*[@role='button' and contains(translate(@aria-label, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'quality')]",
+            "//*[@role='button' and contains(translate(@aria-label, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'settings')]",
+            "//*[self::button or @role='button'][.//*[name()='svg']][last()]",
+        )
+        for xpath in settings_xpaths:
+            try:
+                buttons = self.driver.find_elements(By.XPATH, xpath)
+                for button in reversed(buttons[-6:]):
+                    if hasattr(button, "is_displayed") and not button.is_displayed():
+                        continue
+                    self.driver.execute_script("arguments[0].click();", button)
+                    menu_opened = True
+                    time.sleep(0.35)
+                    break
+            except Exception:
+                continue
+            if menu_opened:
+                break
+
+        quality_xpaths = (
+            f"//*[self::button or @role='button' or self::div or self::span][normalize-space()='{label}']",
+            f"//*[self::button or @role='button' or self::div or self::span][contains(normalize-space(), '{label}')]",
+        )
+        for xpath in quality_xpaths:
+            try:
+                options = self.driver.find_elements(By.XPATH, xpath)
+                for option in options:
+                    if hasattr(option, "is_displayed") and not option.is_displayed():
+                        continue
+                    self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", option)
+                    time.sleep(0.1)
+                    self.driver.execute_script("arguments[0].click();", option)
+                    debug_print(f"DEBUG: Applied stream quality {label}")
+                    return
+            except Exception:
+                continue
 
     def stop(self):
         """Stop the worker"""

@@ -67,6 +67,7 @@ class WinUIBackend:
             "add_campaign": self.add_campaign,
             "add_campaigns": self.add_campaigns,
             "remove": self.remove,
+            "delete_finished": self.delete_finished,
             "start_queue": self.start_queue,
             "stop_queue": self.stop_queue,
             "skip_creator": self.skip_creator,
@@ -481,6 +482,23 @@ class WinUIBackend:
                 worker.force_160p = self.config.force_160p
                 worker.stream_quality = self.config.stream_quality
             return {"ok": True, **self.state()}
+
+    def delete_finished(self, _payload=None):
+        with self._lock:
+            self.config.load()
+            before = len(self.config.items)
+            self.config.items = [
+                item for item in self.config.items
+                if not item.get("finished") and not item.get("claimed")
+            ]
+            removed = before - len(self.config.items)
+            if removed:
+                self.config.save()
+                self._log(f"Deleted {removed} finished drop(s)", "Queue", "")
+            else:
+                self._log("No finished drops to delete", "Queue", "")
+            self._emit_state()
+            return {"ok": True, "removed": removed, **self.state()}
 
     def sync_progress(self, _payload=None):
         updated = self._sync_all_drop_progress(manual=True)
