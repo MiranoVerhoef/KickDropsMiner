@@ -125,3 +125,5 @@ Kick Drop Miner automates watching Kick.com streams so you can keep drop timers 
 - The language selector and dark/light theme toggles are inside the UI footer; they sync to `config.json` instantly.
 - Use the drops helper regularly to keep up with new campaigns and quickly repopulate your queue.
 - When done, close the app and delete the folder to remove `config.json`, `cookies/`, and `chrome_data/`.
+
+# Credits to the original Creator: [HyperBeats](https://github.com/HyperBeats)
